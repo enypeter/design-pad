@@ -1,0 +1,33 @@
+{
+  "name": "@design-pad/core",
+  "version": "0.1.0",
+  "description": "Headless design engine: document model, history, text layout, Canvas 2D renderer and exporters.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/types/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "fflate": "0.8.3",
+    "fractional-indexing": "4.0.0"
+  },
+  "devDependencies": {
+    "vite": "8.3.5"
+  }
+}
