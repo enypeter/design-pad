@@ -19,6 +19,8 @@ import {
   CaseSensitive,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Crop,
   Droplet,
   FlipHorizontal2,
@@ -42,7 +44,7 @@ import {
   Ungroup,
   Wand2,
 } from 'lucide-react';
-import { type ReactNode, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { toggleLock } from '../actions';
 import { Button, Divider, IconButton, Popover, Slider } from '../components/ui';
 import { type SelectionKind, selectionKind, useDesignPad, useEditorValue, useUI } from '../context';
@@ -902,9 +904,75 @@ export function ContextToolbar() {
     }
   }
 
+  return <ToolbarScroller>{body}</ToolbarScroller>;
+}
+
+/**
+ * The toolbar can be wider than the editor (hosts often embed it narrow).
+ * It scrolls sideways; these controls make that visible and reachable.
+ */
+function ToolbarScroller({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+
+  const update = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const left = el.scrollLeft > 1;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    setEdges((prev) => (prev.left === left && prev.right === right ? prev : { left, right }));
+  }, []);
+
+  // The content changes with the selection, the width with the layout.
+  useLayoutEffect(update);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [update]);
+
+  const scroll = (dir: 1 | -1) => {
+    const el = ref.current;
+    el?.scrollBy({ left: dir * el.clientWidth * 0.6, behavior: 'smooth' });
+  };
+
   return (
-    <div className="dp-context-toolbar dp-scrollable" role="toolbar" aria-label="Element options">
-      {body}
+    <div className="dp-toolbar-scroller">
+      {edges.left && (
+        <button
+          type="button"
+          className="dp-toolbar-nudge is-left"
+          aria-label="Scroll toolbar left"
+          onClick={() => scroll(-1)}
+        >
+          <ChevronLeft size={18} />
+        </button>
+      )}
+      <div
+        ref={ref}
+        className="dp-context-toolbar dp-scrollable"
+        role="toolbar"
+        aria-label="Element options"
+        onScroll={update}
+        onWheel={(e) => {
+          // A plain mouse wheel only scrolls vertically; turn that into sideways scrolling here.
+          if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) ref.current?.scrollBy({ left: e.deltaY });
+        }}
+      >
+        {children}
+      </div>
+      {edges.right && (
+        <button
+          type="button"
+          className="dp-toolbar-nudge is-right"
+          aria-label="Scroll toolbar right"
+          onClick={() => scroll(1)}
+        >
+          <ChevronRight size={18} />
+        </button>
+      )}
     </div>
   );
 }

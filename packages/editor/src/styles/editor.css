@@ -28,7 +28,14 @@
   overflow: hidden;
   font-family: var(--dp-font);
   font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
   line-height: 1.4;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-align: start;
+  text-transform: none;
+  white-space: normal;
   color: var(--dp-text);
   background: var(--dp-workspace);
   -webkit-font-smoothing: antialiased;
@@ -1089,6 +1096,40 @@
 
 .dp-context-toolbar::-webkit-scrollbar {
   display: none;
+}
+
+.dp-toolbar-scroller {
+  position: relative;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.dp-toolbar-nudge {
+  position: absolute;
+  top: 0;
+  bottom: 1px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  padding: 0;
+  border: 0;
+  color: var(--dp-text);
+  cursor: pointer;
+}
+
+.dp-toolbar-nudge.is-left {
+  left: 0;
+  justify-content: start;
+  padding-left: 6px;
+  background: linear-gradient(90deg, var(--dp-bg) 55%, transparent);
+}
+
+.dp-toolbar-nudge.is-right {
+  right: 0;
+  justify-content: end;
+  padding-right: 6px;
+  background: linear-gradient(270deg, var(--dp-bg) 55%, transparent);
 }
 
 .dp-tool-btn {
