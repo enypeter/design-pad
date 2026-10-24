@@ -61,7 +61,7 @@ export function group(editor: Editor, ids: Id[]): Id | null {
 
 export function ungroup(editor: Editor, groupId: Id): Id[] {
   const g = editor.getElement(groupId);
-  if (!g || g.type !== 'group') return [];
+  if (g?.type !== 'group') return [];
   const children = editor.getChildren(groupId);
   const m = boxMatrix(g);
   const siblings = editor.getChildren(g.parentId);

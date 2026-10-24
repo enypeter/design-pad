@@ -44,6 +44,9 @@ export class FontManager {
 
   register(def: FontFamilyDef): void {
     this.families.set(def.family, def);
+    // Forget earlier attempts made before the family was known.
+    for (const key of [...this.loaded])
+      if (key.startsWith(`${def.family}|`)) this.loaded.delete(key);
     this.scheduleNotify();
   }
 

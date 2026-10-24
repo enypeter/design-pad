@@ -146,7 +146,7 @@ function tokenize(pieces: Piece[]): Atom[] {
   const atoms: Atom[] = [];
   let current: Atom | null = null;
   const close = () => {
-    if (current && current.fragments.length) atoms.push(current);
+    if (current?.fragments.length) atoms.push(current);
     current = null;
   };
   // Flatten to graphemes with their style so look-ahead works across pieces.
@@ -158,7 +158,7 @@ function tokenize(pieces: Piece[]): Atom[] {
     const { g, style } = chars[i]!;
     const next = chars[i + 1]?.g ?? '';
     if (SPACE.test(g)) {
-      if (!current || !current.isSpace) {
+      if (!current?.isSpace) {
         close();
         current = makeAtom(true);
       }

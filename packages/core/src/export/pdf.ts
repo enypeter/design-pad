@@ -20,7 +20,6 @@ const encoder = new TextEncoder();
 
 /** Escape a PDF literal string (non-ASCII as UTF-16BE hex). */
 function pdfString(s: string): string {
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: PDF strings must escape control characters
   if (/^[\x20-\x7e]*$/.test(s)) return `(${s.replace(/[\\()]/g, (c) => `\\${c}`)})`;
   let hex = 'FEFF';
   for (const ch of s) {

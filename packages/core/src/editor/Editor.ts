@@ -48,6 +48,7 @@ import { ApproximateTextMeasurer, CanvasTextMeasurer, type TextMeasurer } from '
 import * as arrange from './arrange';
 import { type ClipboardPayload, copyElements, pasteElements } from './clipboard';
 import { Emitter } from './emitter';
+import { type ResizeDesignOptions, resizeDesign } from './resizeDesign';
 import { scaleElementProps } from './scale';
 import { type CropTarget, Session, type SessionState } from './session';
 
@@ -133,6 +134,7 @@ export class Editor {
   designId: string;
   private disposers: Array<() => void> = [];
   private disposed = false;
+  private resolveAssetUrl?: (asset: AssetRecord) => string | Promise<string>;
 
   constructor(opts: EditorOptions = {}) {
     this.fonts = opts.fonts ?? new FontManager(opts.fontCatalog);
@@ -146,6 +148,7 @@ export class Editor {
       set: (ids) => this.select(ids),
     });
     this.designId = opts.design?.id ?? createDesignId();
+    this.resolveAssetUrl = opts.resolveAssetUrl;
 
     this.disposers.push(
       this.store.registerBeforeChange((_prev, next) =>
@@ -279,6 +282,11 @@ export class Editor {
     this.store.update<DocumentRecord>(this.getDocument().id, { title });
   }
 
+  /** Change the page size, scaling content to fit (one undo step). */
+  resizeDesign(opts: ResizeDesignOptions): void {
+    resizeDesign(this, opts);
+  }
+
   /** Serialize the design. Unreferenced assets are dropped. */
   toJSON(): DesignFile {
     const doc = this.getDocument();
@@ -332,14 +340,11 @@ export class Editor {
     this.store.loadRecords([doc, ...pages, ...file.elements, ...file.assets]);
     this.history.clear();
     this.session.update({ currentPageId: this.store.getPages()[0]?.id ?? null });
-    for (const font of file.assets) {
-      if (font.kind === 'font' && font.fontFamily) {
-        this.fonts.register({
-          family: font.fontFamily,
-          category: 'sans-serif',
-          variants: [{ weight: 400, italic: false }],
-          files: [{ weight: 400, italic: false, url: font.src }],
-        });
+    for (const asset of file.assets) {
+      if (asset.kind === 'font' && asset.fontFamily) {
+        this.registerFontAsset(asset).catch((err: unknown) =>
+          console.warn(`[design-pad] Font "${asset.fontFamily}" could not be loaded`, err),
+        );
       }
     }
     this.events.emit('load', undefined);
@@ -348,6 +353,21 @@ export class Editor {
   // ===========================================================================
   // Assets
   // ===========================================================================
+
+  /** Make an uploaded font asset usable, then re-request fonts for text using it. */
+  private async registerFontAsset(asset: AssetRecord): Promise<void> {
+    if (!asset.fontFamily) return;
+    const url = this.resolveAssetUrl ? await this.resolveAssetUrl(asset) : asset.src;
+    this.fonts.register({
+      family: asset.fontFamily,
+      category: 'sans-serif',
+      variants: [{ weight: 400, italic: false }],
+      files: [{ weight: 400, italic: false, url }],
+    });
+    for (const r of this.store.values()) {
+      if (r.typeName === 'element' && r.type === 'text') this.requestFonts(r);
+    }
+  }
 
   getAsset(id: Id): AssetRecord | undefined {
     const r = this.store.get(id);
@@ -717,7 +737,7 @@ export class Editor {
 
   startTextEditing(id: Id): void {
     const el = this.getElement(id);
-    if (!el || el.type !== 'text' || el.locked) return;
+    if (el?.type !== 'text' || el.locked) return;
     this.session.update({
       selectedIds: [id],
       editingId: id,

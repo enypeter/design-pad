@@ -70,7 +70,7 @@ export class ExportError extends Error {
 export function safeFilename(title: string): string {
   const base = title
     .trim()
-    .replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '')
+    .replace(/[\\/:*?"<>|\p{Cc}]+/gu, '')
     .replace(/\s+/g, ' ')
     .slice(0, 80);
   return base || 'design';

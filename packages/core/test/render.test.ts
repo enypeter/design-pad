@@ -55,7 +55,15 @@ describe('shapes', () => {
 
   it('rounds polygon corners with arcTo', () => {
     const sink = new RecordingSink();
-    polygonPath(sink, [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }], 2);
+    polygonPath(
+      sink,
+      [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        { x: 10, y: 10 },
+      ],
+      2,
+    );
     expect(sink.ops.filter((o) => o === 'A')).toHaveLength(3);
   });
 
@@ -120,7 +128,8 @@ describe('svg utilities', () => {
   });
 
   it('strips scripts and handlers', () => {
-    const dirty = '<svg onload="alert(1)"><script>alert(2)</script><a href="javascript:x"><rect/></a></svg>';
+    const dirty =
+      '<svg onload="alert(1)"><script>alert(2)</script><a href="javascript:x"><rect/></a></svg>';
     const clean = sanitizeSvg(dirty);
     expect(clean).not.toContain('alert');
     expect(clean).not.toContain('javascript:');
@@ -164,7 +173,13 @@ describe('pdf writer', () => {
   it('writes a structurally valid PDF with a correct xref', () => {
     const rgb = new Uint8Array([255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255]);
     const bytes = buildImagePdf(
-      [{ widthPt: 72, heightPt: 36, image: { kind: 'rgb', data: rgb, pixelWidth: 2, pixelHeight: 2 } }],
+      [
+        {
+          widthPt: 72,
+          heightPt: 36,
+          image: { kind: 'rgb', data: rgb, pixelWidth: 2, pixelHeight: 2 },
+        },
+      ],
       { title: 'Café ☕' },
     );
     const text = new TextDecoder('latin1').decode(bytes);
