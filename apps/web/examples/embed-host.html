@@ -115,6 +115,9 @@
         },
       });
 
+      // Try it from the console: pad.addText({ text: 'Hi' })
+      window.pad = pad;
+
       const gallery = document.getElementById('gallery');
       for (const p of photos) {
         const img = document.createElement('img');

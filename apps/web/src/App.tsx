@@ -3,7 +3,9 @@ import { Home } from './pages/Home';
 import { useLocation } from './router';
 
 // The editor is most of the bundle; the home page should not wait for it.
-const EditorPage = lazy(() => import('./pages/EditorPage').then((m) => ({ default: m.EditorPage })));
+const EditorPage = lazy(() =>
+  import('./pages/EditorPage').then((m) => ({ default: m.EditorPage })),
+);
 const EmbedPage = lazy(() => import('./pages/EmbedPage').then((m) => ({ default: m.EmbedPage })));
 
 export function App() {

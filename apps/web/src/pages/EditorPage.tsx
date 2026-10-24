@@ -11,6 +11,11 @@ type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
 
 const photos = unsplashProvider(import.meta.env.VITE_UNSPLASH_ACCESS_KEY);
 
+async function refreshThumbnail(editor: Editor, designId: string): Promise<void> {
+  const first = editor.getPages()[0];
+  if (first) await saveThumbnail(designId, await pageThumbnail(editor, first.id, 480));
+}
+
 export function EditorPage({ id }: { id: string }) {
   const [file, setFile] = useState<DesignFile | null | undefined>(undefined);
   const [status, setStatus] = useState<SaveStatus>('saved');
@@ -33,10 +38,10 @@ export function EditorPage({ id }: { id: string }) {
       document.title = `${design.title} – Design Pad`;
       // Thumbnails are cheaper to refresh less often.
       window.clearTimeout(thumbTimer.current);
-      thumbTimer.current = window.setTimeout(async () => {
-        const first = editor.getPages()[0];
-        if (first) await saveThumbnail(design.id, await pageThumbnail(editor, first.id, 480));
-      }, 1500);
+      thumbTimer.current = window.setTimeout(
+        () => void refreshThumbnail(editor, design.id).catch(console.error),
+        1500,
+      );
     } catch (err) {
       console.error(err);
       setStatus('error');
@@ -76,14 +81,24 @@ export function EditorPage({ id }: { id: string }) {
         homeLabel="Home"
         onHome={async () => {
           const editor = editorRef.current;
-          if (editor) await saveDesign(editor.toJSON());
+          if (editor) {
+            // Save now (not on the debounce) so the home page shows the latest version.
+            window.clearTimeout(thumbTimer.current);
+            try {
+              await saveDesign(editor.toJSON());
+              await refreshThumbnail(editor, id);
+            } catch (err) {
+              console.error(err);
+            }
+          }
           navigate('/');
         }}
         onReady={(editor) => {
           editorRef.current = editor;
-          // Handy for debugging and end-to-end tests.
-          if (import.meta.env.DEV)
+          // Handy for debugging, and the hook the end-to-end tests read state through.
+          if (import.meta.env.DEV || import.meta.env.VITE_E2E === 'true') {
             (window as unknown as { __designPad: Editor }).__designPad = editor;
+          }
           editor.events.on('change', ({ meta }) => {
             if (meta.source !== 'system') setStatus('unsaved');
           });

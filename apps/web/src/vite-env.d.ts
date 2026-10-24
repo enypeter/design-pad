@@ -5,6 +5,8 @@ interface ImportMetaEnv {
   readonly VITE_UNSPLASH_ACCESS_KEY?: string;
   /** Origins allowed to embed /embed (comma separated). Empty = any origin. */
   readonly VITE_EMBED_ALLOWED_ORIGINS?: string;
+  /** "true" in end-to-end test builds: exposes the engine as window.__designPad. */
+  readonly VITE_E2E?: string;
 }
 
 interface ImportMeta {

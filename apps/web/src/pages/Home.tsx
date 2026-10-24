@@ -46,14 +46,15 @@ async function create(name: string, width: number, height: number, unit: Unit) {
 function Thumb({ id, ratio }: { id: string; ratio: number }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
+    let alive = true;
     let created: string | null = null;
     void loadThumbnail(id).then((blob) => {
-      if (blob) {
-        created = URL.createObjectURL(blob);
-        setUrl(created);
-      }
+      if (!alive || !blob) return;
+      created = URL.createObjectURL(blob);
+      setUrl(created);
     });
     return () => {
+      alive = false;
       if (created) URL.revokeObjectURL(created);
     };
   }, [id]);
