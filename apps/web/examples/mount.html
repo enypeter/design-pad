@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mountDesignPad demo · Design Pad</title>
+    <style>
+      /* Deliberately hostile host styles: an isolated editor must not care. */
+      * { box-sizing: content-box; }
+      button { font: 700 18px Georgia, serif; text-transform: uppercase; border: 3px solid red; }
+      input { background: #ffe9e9; }
+
+      body { margin: 0; display: flex; flex-direction: column; height: 100vh; font-family: Georgia, serif; }
+      .bar { display: flex; gap: 16px; align-items: center; padding: 10px 16px; background: #0e1318; color: #fff; }
+      .bar label { font: 14px system-ui, sans-serif; }
+      #editor { flex: 1; min-height: 0; }
+    </style>
+  </head>
+  <body>
+    <div class="bar">
+      <strong>Host app (no React)</strong>
+      <label><input id="isolate" type="checkbox" checked /> Shadow DOM isolation</label>
+      <button id="save" type="button">Save</button>
+      <span id="status"></span>
+    </div>
+    <div id="editor"></div>
+    <script type="module">
+      import { mountDesignPad } from '@design-pad/editor';
+
+      const status = document.getElementById('status');
+      let pad = null;
+      let saved = null;
+
+      function mount() {
+        pad?.unmount();
+        const container = document.getElementById('editor');
+        // A Shadow DOM can only be attached once, so swap in a fresh container.
+        const fresh = container.cloneNode(false);
+        container.replaceWith(fresh);
+        pad = mountDesignPad(fresh, {
+          isolate: document.getElementById('isolate').checked,
+          design: saved ?? undefined,
+          size: { width: 1200, height: 628, title: 'Mounted design' },
+          features: { panels: ['design', 'elements', 'text', 'uploads'] },
+          onChange: (design) => (saved = design),
+          onSave: (design) => {
+            saved = design;
+            status.textContent = `Saved ${new Date().toLocaleTimeString()}`;
+          },
+        });
+        window.__pad = pad;
+        if (!saved) pad.editor.addElement({ type: 'text', spans: [{ text: 'Mounted without React' }] });
+      }
+
+      document.getElementById('isolate').onchange = mount;
+      document.getElementById('save').onclick = () => {
+        saved = pad.editor.toJSON();
+        status.textContent = `Saved ${saved.elements.length} element(s)`;
+      };
+      mount();
+    </script>
+  </body>
+</html>

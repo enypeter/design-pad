@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Embed demo · Design Pad</title>
+    <style>
+      :root { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #0e1318; }
+      body { margin: 0; display: grid; grid-template-columns: 300px 1fr; height: 100vh; background: #f4f5f7; }
+      aside { padding: 20px; overflow: auto; background: #fff; border-right: 1px solid #e1e3e8; }
+      h1 { font-size: 18px; margin: 0 0 4px; }
+      p { color: #5c6370; font-size: 13px; line-height: 1.5; }
+      h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: #5c6370; margin: 20px 0 8px; }
+      .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+      .gallery img { width: 100%; border-radius: 6px; cursor: pointer; display: block; }
+      button { display: block; width: 100%; margin: 6px 0; padding: 9px 12px; border: 0; border-radius: 8px; font-family: inherit; font-size: 13px; font-weight: 600; background: #eef0f3; cursor: pointer; }
+      button.primary { color: #fff; background: #8b3dff; }
+      #log { font: 12px ui-monospace, monospace; white-space: pre-wrap; background: #0e1318; color: #c7f9cc; padding: 10px; border-radius: 8px; max-height: 220px; overflow: auto; }
+      #editor { min-width: 0; }
+      #preview { width: 100%; border-radius: 8px; margin-top: 8px; box-shadow: 0 0 0 1px #e1e3e8; }
+    </style>
+  </head>
+  <body>
+    <aside>
+      <h1>Your app (host)</h1>
+      <p>This page embeds the editor from <code>/embed</code> with <code>@design-pad/embed</code>. Uploads, photo search and saving are handled by the host over a private MessageChannel.</p>
+      <h2>Client gallery</h2>
+      <p>Click a photo to add it, or open the editor's Photos tab: it searches this gallery.</p>
+      <div class="gallery" id="gallery"></div>
+      <h2>Actions</h2>
+      <button type="button" class="primary" id="export">Export PNG from host</button>
+      <button type="button" id="json">Get design JSON</button>
+      <button type="button" id="text">Add text from host</button>
+      <img id="preview" alt="" hidden />
+      <h2>Events</h2>
+      <div id="log"></div>
+    </aside>
+    <main id="editor"></main>
+    <script type="module">
+      import { openDesignPad } from '@design-pad/embed';
+
+      const log = (msg) => {
+        const el = document.getElementById('log');
+        el.textContent = `${new Date().toLocaleTimeString()}  ${msg}\n${el.textContent}`;
+      };
+
+      // Generate a few sample "client photos" locally so the demo needs no network.
+      const palette = [['#ff9a8b', '#ff6a88'], ['#a1c4fd', '#c2e9fb'], ['#f6d365', '#fda085'], ['#84fab0', '#8fd3f4'], ['#cfd9df', '#e2ebf0'], ['#667eea', '#764ba2']];
+      const photos = await Promise.all(
+        palette.map(async ([a, b], i) => {
+          const c = document.createElement('canvas');
+          c.width = 1200;
+          c.height = i % 2 ? 1500 : 900;
+          const g = c.getContext('2d');
+          const grad = g.createLinearGradient(0, 0, c.width, c.height);
+          grad.addColorStop(0, a);
+          grad.addColorStop(1, b);
+          g.fillStyle = grad;
+          g.fillRect(0, 0, c.width, c.height);
+          g.fillStyle = 'rgba(255,255,255,0.35)';
+          g.beginPath();
+          g.arc(c.width * 0.7, c.height * 0.35, c.width * 0.18, 0, Math.PI * 2);
+          g.fill();
+          g.fillStyle = 'rgba(0,0,0,0.18)';
+          g.beginPath();
+          g.moveTo(0, c.height);
+          g.lineTo(c.width * 0.35, c.height * 0.55);
+          g.lineTo(c.width * 0.6, c.height * 0.75);
+          g.lineTo(c.width * 0.85, c.height * 0.5);
+          g.lineTo(c.width, c.height);
+          g.fill();
+          const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.9));
+          const url = URL.createObjectURL(blob);
+          return { id: `photo-${i}`, url, thumbUrl: url, width: c.width, height: c.height, author: 'Sample client', source: 'Client gallery' };
+        }),
+      );
+
+      const uploads = [];
+      const pad = await openDesignPad({
+        container: document.getElementById('editor'),
+        editorUrl: '/embed',
+        size: { width: 1080, height: 1080 },
+        title: 'Client promo',
+        brand: { name: 'Studio brand', colors: ['#1f1f1f', '#ffbd59', '#8b3dff', '#f6efe7'], fonts: { heading: 'Playfair Display', body: 'Lato' } },
+        headerActions: [{ id: 'done', label: 'Save & close', variant: 'primary' }],
+        assets: {
+          async upload(file) {
+            const url = URL.createObjectURL(file);
+            const img = await createImageBitmap(file).catch(() => null);
+            const asset = { src: url, mime: file.type, name: file.name, width: img?.width ?? 100, height: img?.height ?? 100 };
+            uploads.unshift(asset);
+            log(`host stored upload ${file.name}`);
+            return asset;
+          },
+          list: async () => uploads,
+        },
+        photos: {
+          name: 'Client gallery',
+          async search(query, page) {
+            const q = query.toLowerCase();
+            const results = photos.filter((p) => !q || p.id.includes(q) || 'sample client'.includes(q));
+            return { results: page === 1 ? results : [], hasMore: false };
+          },
+          onUse: (photo) => log(`photo used: ${photo.id}`),
+        },
+        onReady: ({ designId }) => log(`ready (${designId})`),
+        onChange: (design) => log(`change: ${design.pages.length} page(s)`),
+        onSave: () => log('save requested (Ctrl+S)'),
+        onAction: (id, design) => log(`action "${id}" with ${design.elements.length} element(s)`),
+        onExport: (blob, info) => {
+          log(`export received: ${info.filename} (${Math.round(blob.size / 1024)} KB)`);
+          const img = document.getElementById('preview');
+          img.src = URL.createObjectURL(blob);
+          img.hidden = !info.format.startsWith('image/');
+        },
+      });
+
+      const gallery = document.getElementById('gallery');
+      for (const p of photos) {
+        const img = document.createElement('img');
+        img.src = p.thumbUrl;
+        img.alt = p.id;
+        img.onclick = () => pad.addImage({ url: p.url, width: p.width, height: p.height, name: p.id }).then((id) => log(`added image ${id}`));
+        gallery.appendChild(img);
+      }
+      document.getElementById('export').onclick = async () => {
+        const { blob, filename } = await pad.export({ format: 'png', scale: 0.5 });
+        log(`exported ${filename} (${Math.round(blob.size / 1024)} KB)`);
+        const img = document.getElementById('preview');
+        img.src = URL.createObjectURL(blob);
+        img.hidden = false;
+      };
+      document.getElementById('json').onclick = async () => {
+        const design = await pad.getDesign();
+        log(`design JSON: ${JSON.stringify(design).length} bytes`);
+      };
+      document.getElementById('text').onclick = () => pad.addText({ text: 'Hello from the host app', fontSize: 64 });
+    </script>
+  </body>
+</html>

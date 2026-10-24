@@ -12,6 +12,7 @@ export default defineConfig({
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
         embedHost: resolve(import.meta.dirname, 'examples/embed-host.html'),
+        mount: resolve(import.meta.dirname, 'examples/mount.html'),
       },
     },
   },
